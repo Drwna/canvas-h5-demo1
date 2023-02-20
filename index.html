@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"
+    />
+    <title>poster</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      .dn {
+        display: none !important;
+      }
+      #app {
+        width: 100vw;
+        height: 100vh;
+        background-color: #f5f5f5;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #poster {
+        flex-grow: 1;
+        background-color: grey;
+        display: flex;
+      }
+
+      #poster img {
+        width: 100%;
+        object-fit: contain;
+      }
+
+      .btns {
+        position: relative;
+        height: 24vw;
+      }
+
+      .btns button {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        height: 50px;
+        font-size: 20px;
+        line-height: 50px;
+        text-align: center;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      }
+
+      input[type="file"] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+      }
+
+      .inputBox {
+        height: 40px;
+        border: 1px solid red;
+        padding: 0 20px;
+      }
+
+      input[type="text"] {
+        width: 100%;
+        height: 100%;
+        border: none;
+        outline: none;
+        background-color: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="poster">
+        <canvas id="canvas"></canvas>
+      </div>
+      <div class="inputBox">
+        <input type="text" />
+      </div>
+      <div class="btns">
+        <button type="button" id="btnChooseImg">
+          <input type="file" name="upload" accept="image/*" />
+          选择图片
+        </button>
+        <button class="dn" type="button" id="btnGenerate">生成海报</button>
+        <button class="dn" type="button" id="btnDownload">下载海报</button>
+      </div>
+    </div>
+    <script>
+      const $ = (s) => document.querySelector(s);
+
+      const $app = $("#app");
+      const $poster = $("#poster");
+      const $canvas = $("#canvas");
+      const $btnChooseImg = $("#btnChooseImg");
+      const $btnGenerate = $("#btnGenerate");
+      const $download = $("#btnDownload");
+      const $inputBox = $(".inputBox input");
+
+      const ctx = $canvas.getContext("2d");
+      const width = $poster.clientWidth;
+      const height = $poster.clientHeight;
+      $canvas.width = width;
+      $canvas.height = height;
+
+      // *****************解决移动端糊的问题
+      let dpr = window.devicePixelRatio; // 假设dpr为2
+      console.log(dpr);
+      // 获取css的宽高
+      let { width: cssWidth, height: cssHeight } =
+        $canvas.getBoundingClientRect();
+      // 根据dpr，扩大canvas画布的像素，使1个canvas像素和1个物理像素相等
+      $canvas.style.width = $canvas.width + "px";
+      $canvas.style.height = $canvas.height + "px";
+
+      $canvas.width = dpr * cssWidth;
+      $canvas.height = dpr * cssHeight;
+      // 由于画布扩大，canvas的坐标系也跟着扩大，如果按照原先的坐标系绘图内容会缩小
+      // 所以需要将绘制比例放大
+      ctx.scale(dpr, dpr);
+      // **************************
+
+      const $upload = $('input[type="file"]');
+
+      $upload.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        console.log(file);
+        if (!file) return;
+        const blob = URL.createObjectURL(file);
+        console.log(blob);
+        const img = new Image();
+        img.src = blob;
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, width, height);
+          const imgSrc = $canvas.toDataURL("image/jpeg");
+          console.log('eee');
+          // img.src = imgSrc;
+          $poster.appendChild(img);
+          $canvas.classList.add("dn");
+
+          $btnGenerate.classList.remove("dn");
+          $btnChooseImg.classList.add("dn");
+          URL.revokeObjectURL(imgSrc);
+        };
+      });
+
+      $btnGenerate.addEventListener("click", () => {
+        const text = $inputBox.value;
+        if (!text) {
+          alert("请输入文字");
+          return;
+        }
+
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "#fff";
+
+        const offsetLeft = 0;
+        let lineWidth = 0;
+        const canvasWidth = cssWidth;
+        let initHeight = 20;
+        let lastSubStrIndex = 0; //每次开始截取的字符串的索引
+        for (let i = 0; i < text.length; i++) {
+          lineWidth += ctx.measureText(text[i]).width;
+          if (lineWidth > canvasWidth) {
+            ctx.fillText(
+              text.substring(lastSubStrIndex, i),
+              offsetLeft,
+              initHeight
+            );
+            initHeight += 20; // 20为字体的高度
+            lineWidth = 20;
+            lastSubStrIndex = i;
+          }
+          if (i === text.length - 1) {
+            ctx.fillText(
+              text.substring(lastSubStrIndex, i + 1),
+              offsetLeft,
+              initHeight
+            );
+          }
+        }
+
+        $btnGenerate.classList.add("dn");
+        $download.classList.remove("dn");
+      });
+
+      $download.addEventListener("click", () => {
+        const img = $canvas.toDataURL("image/jpeg", 0.8);
+        const a = document.createElement("a");
+        a.href = img;
+        a.download = "poster.png";
+        a.click();
+      });
+    </script>
+  </body>
+</html>

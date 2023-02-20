@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"
+    />
+    <title>poster 3</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      .dn {
+        display: none !important;
+      }
+      #app {
+        width: 100vw;
+        height: 100vh;
+        background-color: #f5f5f5;
+      }
+      .section {
+        /* min-height: 500px; */
+        height: 100%;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      #poster {
+        width: 240px;
+        height: 450px;
+        margin: 0 auto;
+        flex-grow: 1;
+        outline: 1px solid #000;
+        position: relative;
+      }
+
+      #poster img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        /* object-fit: cover; */
+      }
+      textarea {
+        font-size: 16px;
+        height: 40px;
+        line-height: 38px;
+        resize: none;
+        outline: none;
+      }
+      .colors {
+        display: flex;
+        gap: 14px;
+      }
+      .colors .color:not(input) {
+        flex: 1;
+        border: 2px solid rgba(0, 0, 0, 0);
+        outline: none;
+      }
+      .colors .color.selected {
+        border: 2px solid #222222;
+      }
+      #color1 {
+        background-color: #000000;
+      }
+      #color2 {
+        background-color: #ff0000;
+      }
+      #color3 {
+        background-color: #00ffff;
+      }
+      #color4 {
+        background-color: #ffffff;
+      }
+      .btns {
+        display: flex;
+        justify-content: space-between;
+      }
+      .btns button {
+        padding: 8px;
+        background-color: #0095ff;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        box-shadow: rgba(255, 255, 255, 0.4) 0 1px 0 0 inset;
+        color: #fff;
+        display: inline-block;
+        font-size: 13px;
+        font-weight: 400;
+        line-height: 1.15385;
+        padding: 8px 0.8em;
+        position: relative;
+        text-align: center;
+        text-decoration: none;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        vertical-align: baseline;
+        white-space: nowrap;
+      }
+      .btns button:disabled {
+        background-color: #ccc;
+      }
+      input[type="file"] {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        opacity: 0;
+      }
+    </style>
+    <style>
+      .dialog {
+        position: absolute;
+        top: 30%;
+        left: 12.5%;
+        background: rgba(0, 0, 0, 0.7);
+        width: 75%;
+        border-radius: 20px;
+        box-sizing: border-box;
+        padding: 20px;
+        text-align: center;
+        font-size: 16px;
+        color: #fff;
+        word-break: break-all;
+        word-wrap: break-word;
+      }
+      .dialog button {
+        width: 100px;
+        height: 34px;
+        margin-top: 40px;
+        position: relative;
+      }
+      .zoomIn {
+        animation: zoomIn 0.5s backwards;
+      }
+      @keyframes zoomIn {
+        from {
+          opacity: 0;
+          transform: scale3d(0.1, 0.1, 0.1);
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <section class="section">
+        <div id="poster"></div>
+        <textarea name="text" id="text" placeholder="请输入文字"></textarea>
+        <div class="colors" id="colors"></div>
+        <div class="btns">
+          <button id="chooseImg" type="button">
+            <input type="file" accept="image/*" />
+            <span>选择图片</span>
+          </button>
+          <button disabled id="generatePoster" type="button">生成海报</button>
+          <button disabled id="sharePoster" type="button">分享海报</button>
+          <button disabled id="downloadPoster" type="button">下载海报</button>
+        </div>
+      </section>
+    </div>
+    <aside class="dialog dn" id="dialog">
+      <p>长按海报即可将图片保存至手机</p>
+      <button type="button" class="btn-large-x">我知道了</button>
+    </aside>
+
+    <script>
+      const $ = document.querySelector.bind(document);
+
+      const dom = {
+        poster: $("#poster"),
+        file: $("#chooseImg input"),
+        textarea: $("#text"),
+        colors: $("#colors"),
+        generatePoster: $("#generatePoster"),
+        sharePoster: $("#sharePoster"),
+        downloadPoster: $("#downloadPoster"),
+        dialog: $("#dialog"),
+      };
+      const colors = [
+        "#000000",
+        "#ffffff",
+        "#ff0000",
+        "#ed5736",
+        "#fff143",
+        "#00bc12",
+        "#70f3ff",
+        "#F2BE45",
+      ];
+
+      let left = 0;
+
+      const createColors = (colors) => {
+        dom.colors.innerHTML =
+          colors
+            .map(
+              (v, i) =>
+                `<button class="color ${i === 0 && "selected"}"
+                 data-color="${v}" style="background-color: ${v}"></button>`
+            )
+            .join("") + `<input class="color" type="color" />`;
+      };
+
+      const autoTextareaHeight = (event) => {
+        ele = event.target;
+        const { scrollHeight } = ele;
+        const height = parseInt(ele.offsetHeight);
+        const borderSize =
+          Math.ceil(
+            parseFloat(
+              window
+                .getComputedStyle(ele, null)
+                .getPropertyValue("border-top-width")
+            )
+          ) * 2;
+        if (scrollHeight > height) {
+          ele.style.lineHeight = "1.2";
+          ele.style.height = ele.scrollHeight + borderSize + "px";
+        }
+      };
+
+      const getRandomInt = (min, max) => {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      };
+
+      const wrapText = (ctx, canvasHeight, canvasWidth, options) => {
+        text = options.text;
+        color = options.color || "#000000";
+        const fontSize = 20;
+        ctx.fillStyle = color;
+        ctx.font = `${fontSize}px Arial`;
+
+        const centerWidth = canvasWidth / 2;
+        const randomOffsetLeft = getRandomInt(0, centerWidth);
+        console.log("random offset left", randomOffsetLeft);
+
+        const top = getRandomInt(fontSize, canvasHeight);
+        console.log(top)
+
+        let totalHeight = 0;
+
+        let offsetLeft;
+        if (left !== 0) {
+          offsetLeft = left;
+        } else {
+          offsetLeft = randomOffsetLeft;
+        }
+
+        console.log("offset left", offsetLeft);
+
+        let lineWidth = 0;
+        let initHeight = top; //绘制字体距离canvas顶部初始的高度
+        let lastSubStrIndex = 0; //每次开始截取的字符串的索引
+        for (let i = 0; i < text.length; i++) {
+          // console.log("i", ctx.measureText(text[i]).width);
+          lineWidth += ctx.measureText(text[i]).width;
+          if (lineWidth + offsetLeft > canvasWidth) {
+            ctx.fillText(
+              text.substring(lastSubStrIndex, i),
+              offsetLeft,
+              initHeight
+            );
+            initHeight += fontSize;
+            lineWidth = fontSize;
+            lastSubStrIndex = i;
+            totalHeight += fontSize;
+          }
+          if (i === text.length - 1) {
+            ctx.fillText(
+              text.substring(lastSubStrIndex, i + 1),
+              offsetLeft,
+              initHeight
+            );
+          }
+        }
+
+        // console.log("init height", initHeight);
+        // console.log("line width", lineWidth);
+        // console.log("total height", totalHeight);
+      };
+
+      const createHDCanvas = (w, h) => {
+        const canvas = document.createElement("canvas");
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = w * ratio; // 实际渲染像素
+        canvas.height = h * ratio; // 实际渲染像素
+        canvas.style.width = `${w}px`; // 控制显示大小
+        canvas.style.height = `${h}px`; // 控制显示大小
+        const ctx = canvas.getContext("2d");
+        ctx.scale(ratio, ratio);
+        // canvas 绘制
+        return canvas;
+      };
+
+      const generatePoster = (img) => {
+        const width = dom.poster.offsetWidth; // 335
+        const height = dom.poster.offsetHeight; // 400
+
+        const canvas = createHDCanvas(width, height);
+        const ctx = canvas.getContext("2d");
+
+        const ratio = img.naturalWidth / img.naturalHeight;
+        const imgHeight = height;
+        const imgWidth = height * ratio;
+        // const imgWidth = height * ratio;
+        // const imgWidth = width;
+
+        ctx.drawImage(img, -(imgWidth - width) / 2, 0, imgWidth, imgHeight);
+
+        const text = dom.textarea.value;
+        const color =
+          $(".color.selected").dataset.color || $("#colors input").value;
+
+        const getRandomXAndYInCanvas = () => {
+          const x = Math.floor(Math.random() * imgWidth);
+          const y = Math.floor(Math.random() * imgHeight);
+          return { x, y };
+        };
+
+        // const textList = text.split("\n");
+        // console.log(textList);
+        // textList.forEach((text) => {
+        //   wrapText(ctx, width, { text, color });
+        // });
+
+        wrapText(ctx, height, width, { text, color });
+
+        // ctx.fillStyle = color;
+        // ctx.font = `20px Arial`;
+        // // ctx.wrapText(text, 100, 100, width - 200, 30);
+        // const { x, y } = getRandomXAndYInCanvas();
+        // console.log(x, y);
+        // ctx.fillText(text, x, y);
+
+        const imgEle = dom.poster.querySelector("img");
+        imgEle && imgEle.classList.add("dn");
+        const canvasEle = dom.poster.querySelector("canvas");
+        canvasEle && canvasEle.remove();
+        dom.poster.appendChild(canvas);
+      };
+
+      const reGeneratePoster = () => {
+        const canvas = dom.poster.querySelector("canvas");
+        const imgList = dom.poster.querySelectorAll("img");
+        imgList.forEach((v) => !v.dataset.type && v.remove());
+        const imgEle = dom.poster.querySelector("img[data-type=origin]");
+        canvas && imgEle && generatePoster(imgEle);
+      };
+
+      const isWechat = () => {
+        const ua = navigator.userAgent.toLowerCase();
+        return ua.match(/MicroMessenger/i) == "micromessenger";
+      };
+
+      const downloadPoster = () => {
+        const canvas = dom.poster.querySelector("canvas");
+        const url = canvas.toDataURL("image/jpeg", 0.8);
+        if (isWechat()) {
+          const img = new Image();
+          img.src = url;
+          img.onload = () => {
+            dom.poster.appendChild(img);
+            dom.dialog.classList.remove("dn");
+            dom.dialog.classList.add("zoomIn");
+          };
+        } else {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "poster.png";
+          a.click();
+        }
+      };
+
+      createColors(colors);
+
+      // textarea高度自适应
+      dom.textarea.addEventListener("input", (e) => {
+        autoTextareaHeight(e);
+        // reGeneratePoster();
+      });
+
+      // 选择颜色
+      dom.colors.addEventListener("click", function (e) {
+        const target = e.target;
+        if (target.nodeName.toLowerCase() !== "div") {
+          this.querySelector(".selected").classList.remove("selected");
+          target.classList.add("selected");
+        }
+      });
+
+      // 颜色选择器
+      dom.colors
+        .querySelector("input")
+        .addEventListener("input", reGeneratePoster);
+
+      // 选择图片
+      dom.file.addEventListener("change", function (e) {
+        left = 0;
+        const file = e.target.files[0];
+        if (!file) return;
+        const imgSrc = URL.createObjectURL(file);
+        const tempImg = new Image();
+        tempImg.setAttribute("data-type", "origin");
+        tempImg.src = imgSrc;
+        tempImg.onload = () => {
+          dom.poster.innerHTML = "";
+          dom.poster.appendChild(tempImg);
+          URL.revokeObjectURL(imgSrc);
+          this.nextElementSibling.textContent = "重新选择";
+          dom.generatePoster.disabled = false;
+        };
+      });
+
+      // 生成海报
+      dom.generatePoster.addEventListener("click", function () {
+        const img = dom.poster.querySelector("img");
+        generatePoster(img);
+        dom.generatePoster.disabled = false;
+        dom.sharePoster.disabled = false;
+        dom.downloadPoster.disabled = false;
+      });
+
+      // 下载海报
+      dom.downloadPoster.addEventListener("click", downloadPoster);
+
+      dom.dialog.addEventListener("click", function (e) {
+        const target = e.target;
+        if (target.nodeName.toLowerCase() === "button") {
+          this.classList.remove("zoomIn");
+          this.classList.add("dn");
+        }
+      });
+    </script>
+  </body>
+</html>

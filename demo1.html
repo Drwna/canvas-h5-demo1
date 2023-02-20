@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"
+    />
+    <title>h5海报</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        display: flex;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <script>
+      // 使用canvas生成海报
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const width = document.documentElement.clientWidth;
+      const height = document.documentElement.clientHeight;
+      canvas.width = width;
+      canvas.height = height;
+      const img = new Image();
+      img.src = "./1.jpg";
+      img.onload = function () {
+        const imgWidth = width;
+        const ratio = getNaturalImgRatio(img);
+        const imgHeight = imgWidth / ratio;
+        ctx.drawImage(img, 0, 0, width, imgHeight);
+
+        ctx.font = "normal 14px PingFangSC-Regular";
+        ctx.fillStyle = "#000";
+        ctx.fillText("我是一段文字", 20, 100);
+        ctx.font = "normal 26px PingFangSC-Regular";
+        ctx.fillStyle = "#000";
+        ctx.fillText("我是一段文字", 100, 200);
+        ctx.font = "normal 34px PingFangSC-Regular";
+        ctx.fillStyle = "#000";
+        ctx.fillText("我是一段文字", 100, 300);
+        ctx.font = "normal 40px PingFangSC-Regular";
+        ctx.fillStyle = "#000";
+        ctx.fillText(
+          "我是一段很长很长很长很长的文字我是一段文字我是一段文",
+          100,
+          400
+        );
+
+        ctx.font = "normal 30px PingFangSC-Regular";
+        ctx.fillStyle = "#000";
+      };
+
+      document.body.addEventListener("click", () => {
+        // 生成图片并下载
+        const imgData = canvas.toDataURL("image/png");
+        const img2 = new Image();
+        img2.src = imgData;
+        img2.onload = function () {
+          const a = document.createElement("a");
+          a.href = imgData;
+          a.download = "海报";
+          a.click();
+        };
+      });
+
+      function getNaturalImgRatio(img) {
+        if (img.naturalWidth) {
+          return img.naturalWidth / img.naturalHeight;
+        }
+      }
+    </script>
+  </body>
+</html>
